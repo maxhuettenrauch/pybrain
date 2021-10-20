@@ -51,6 +51,35 @@ class XNES(DistributionBasedOptimizer):
         if self.storeAllDistributions:
             self._allDistributions = [(self._center.copy(), self._A.copy())]
 
+    def ask(self):
+        self._produceSamples()
+        return self._population
+
+    def tell(self, rewards):
+        I = eye(self.numParameters)
+        utilities = self.shapingFunction(rewards)
+        utilities /= sum(utilities)  # make the utilities sum to 1
+        if self.uniformBaseline:
+            utilities -= 1. / self.batchSize
+        samples = array(list(map(self._base2sample, self._population)))
+
+        dCenter = dot(samples.T, utilities)
+        covGradient = dot(array([outer(s, s) - I for s in samples]).T, utilities)
+        covTrace = trace(covGradient)
+        covGradient -= covTrace / self.numParameters * I
+        dA = 0.5 * (self.scaleLearningRate * covTrace / self.numParameters * I
+                    + self.covLearningRate * covGradient)
+
+        self._lastLogDetA = self._logDetA
+        self._lastInvA = self._invA
+
+        self._center += self.centerLearningRate * dot(self._A, dCenter)
+        self._A = dot(self._A, expm(dA))
+        self._invA = dot(expm(-dA), self._invA)
+        self._logDetA += 0.5 * self.scaleLearningRate * covTrace
+        if self.storeAllDistributions:
+            self._allDistributions.append((self._center.copy(), self._A.copy()))
+
     def _learnStep(self):
         """ Main part of the algorithm. """
         I = eye(self.numParameters)
