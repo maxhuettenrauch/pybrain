@@ -56,10 +56,12 @@ class XNES(DistributionBasedOptimizer):
                        range(self.batchSize)]
         self._allEvaluated.extend(new_samples)
         self._pointers = list(
-            range(len(self._allEvaluated) - self.samples_per_iter, len(self._allEvaluated)))
+            range(len(self._allEvaluated) - self.batchSize, len(self._allEvaluated)))
+        self.numEvaluations += self.batchSize
         return self._population
 
     def tell(self, rewards):
+        self._allEvaluations.extend(rewards)
         I = eye(self.numParameters)
         utilities = self.shapingFunction(rewards)
         utilities /= sum(utilities)  # make the utilities sum to 1
