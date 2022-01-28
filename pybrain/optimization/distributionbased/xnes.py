@@ -52,7 +52,11 @@ class XNES(DistributionBasedOptimizer):
             self._allDistributions = [(self._center.copy(), self._A.copy())]
 
     def ask(self):
-        self._produceSamples()
+        new_samples = [self._sample2base(self._produceSample()) for _ in
+                       range(self.batchSize)]
+        self._allEvaluated.extend(new_samples)
+        self._pointers = list(
+            range(len(self._allEvaluated) - self.samples_per_iter, len(self._allEvaluated)))
         return self._population
 
     def tell(self, rewards):
