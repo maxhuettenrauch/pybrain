@@ -64,7 +64,7 @@ class XNES(DistributionBasedOptimizer):
         self._allEvaluations.extend(rewards)
         I = eye(self.numParameters)
         utilities = self.shapingFunction(rewards)
-        utilities /= sum(utilities)  # make the utilities sum to 1
+        # utilities /= sum(utilities)  # make the utilities sum to 1
         if self.uniformBaseline:
             utilities -= 1. / self.batchSize
         samples = array(list(map(self._base2sample, self._population)))

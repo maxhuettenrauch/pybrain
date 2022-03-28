@@ -4,7 +4,8 @@ __author__ = 'Daan Wierstra and Tom Schaul'
 
 from pybrain.utilities import Named
 from random import randint
-from scipy import zeros, argmax, array, power, exp, sqrt, var, zeros_like, arange, mean, log
+from scipy import zeros, argmax, array, power, exp, sqrt, var, zeros_like, arange, mean, log, std, isclose
+import scipy.stats as sst
 
 
 def rankedFitness(R):
@@ -24,6 +25,10 @@ def rankedFitness(R):
 
 def normalizedFitness(R):
     return array((R - mean(R)) / sqrt(var(R))).flatten()
+
+
+def min_max_fitness(R):
+    return array((R - min(R)) / (max(R) - min(R))).flatten()
 
 
 class RankingFunction(Named):
@@ -97,7 +102,9 @@ class HansenRanking(RankingFunction):
 
     def __call__(self, R):
         ranks = rankedFitness(R)
-        return array([max(0., x) for x in log(len(R)/2.+1.0)-log(len(R)-array(ranks))])
+        utilities = array([max(0., x) for x in log(len(R)/2.+1.0)-log(len(R)-array(ranks))])
+        utilities /= sum(utilities)  # make the utilities sum to 1
+        return utilities
 
 
 class TopSelection(RankingFunction):
@@ -161,3 +168,40 @@ class BilinearRanking(RankingFunction):
         return res
 
 
+class RobustNormalizationRanking(RankingFunction):
+    """ Robust mean/std normalization of rewards"""
+
+    robust_clip_value = 3.
+
+    def __call__(self, R):
+        return self.normalize_robust(R)
+
+    def normalize_robust(self, y):
+        data_y_mean = mean(y)
+        data_y_std = std(y, ddof=1)
+        # self._data_y_mean = data_y_mean
+        new_y = (y - data_y_mean) / data_y_std
+        new_y[new_y < -self.robust_clip_value] = -self.robust_clip_value
+        new_y[new_y > self.robust_clip_value] = self.robust_clip_value
+        idx = (-self.robust_clip_value < new_y) & (new_y < self.robust_clip_value)
+        y_tmp = new_y[idx]
+
+        if sst.kurtosis(y_tmp) > 0.55 and not isclose(data_y_std, 1):
+            new_y[idx] = self.normalize_robust(y_tmp)
+        # elif sst.kurtosis(y_tmp) < 0:
+        #     new_y_tmp = np.linspace(np.min(new_y[idx]), np.max(new_y[idx]), num=y.size)[:, None]
+        #     new_y[idx] = np.zeros(shape=y_tmp.shape)
+        #     ind = np.argsort(y_tmp.flatten())
+        #     new_y[ind] = new_y_tmp
+        # return new_y
+        new_y[new_y == -self.robust_clip_value] = min(new_y[idx])
+        new_y[new_y == self.robust_clip_value] = max(new_y[idx])
+        return new_y
+
+
+class MinMaxRanking(RankingFunction):
+
+    def __call__(self, R):
+        utilities = min_max_fitness(R)
+        utilities /= sum(utilities)  # make the utilities sum to 1
+        return utilities

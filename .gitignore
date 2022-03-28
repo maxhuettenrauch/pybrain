@@ -12,3 +12,4 @@ docs/sphinx/.build
 /pybrain/rl/environments/cartpole/fast_version/cartpolewrap.cpp
 /pybrain/rl/environments/cartpole/fast_version/cartpolewrap.pyd
 /.pydevproject
+.idea
